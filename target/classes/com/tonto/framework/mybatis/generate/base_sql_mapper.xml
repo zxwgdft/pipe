@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="{model}">
+	<select id="find" resultType="{model}">
+		{findSql}
+	</select>
+
+	<select id="get" resultType="{model}" parameterType="{model}">
+		{getSql}
+	</select>
+
+	<delete id="delete" parameterType="{model}">
+		{deleteSql}
+	</delete>
+
+	<insert id="insert" parameterType="{model}">
+		{insertSql}
+	</insert>
+
+	<update id="update" parameterType="{model}">
+		{updateSql}
+	</update>
+</mapper>

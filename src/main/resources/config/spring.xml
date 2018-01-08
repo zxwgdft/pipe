@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+           http://www.springframework.org/schema/context
+           http://www.springframework.org/schema/context/spring-context-2.5.xsd
+           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.5.xsd
+           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+
+	<context:component-scan base-package="com.tonto">
+		<context:exclude-filter type="regex"
+			expression="com.tonto.*.web.controller.*" />
+	</context:component-scan>
+	<aop:aspectj-autoproxy proxy-target-class="true" />
+	
+	<context:property-placeholder
+		location="classpath:init.properties" />
+
+	<bean id="log-filter" class="com.alibaba.druid.filter.logging.Slf4jLogFilter">
+		<property name="connectionLogEnabled" value="true" />
+		<property name="statementLogEnabled" value="true" />
+		<property name="resultSetLogEnabled" value="true" />
+		<property name="statementExecutableSqlLogEnable" value="true" />
+	</bean>
+
+	<bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource"
+		init-method="init" destroy-method="close">
+		
+		<property name="driverClassName"><value>${datasource.driverClassName}</value></property>
+		<property name="url"><value>${datasource.url}</value></property>
+		<property name="username"><value>${datasource.username}</value></property>
+		<property name="password"><value>${datasource.password}</value></property>
+		<!-- 初始化连接大小 -->
+		<property name="initialSize"><value>${datasource.initialSize}</value></property>		
+		<!-- 连接池最大使用连接数量 -->
+		<property name="maxActive"><value>${datasource.maxActive}</value></property>		
+		<!-- 连接池最大空闲 -->
+		<property name="maxIdle"><value>${datasource.maxIdle}</value></property>		
+		<!-- 连接池最小空闲 -->
+		<property name="minIdle"><value>${datasource.minIdle}</value></property>		
+		<!-- 获取连接最大等待时间 -->
+		<property name="maxWait"><value>${datasource.maxWait}</value></property>	
+		<property name="testOnBorrow"><value>${datasource.testOnBorrow}</value></property>
+		<property name="testOnReturn"><value>${datasource.testOnReturn}</value></property>
+		<property name="testWhileIdle"><value>${datasource.testWhileIdle}</value></property>	
+		<!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+		<property name="timeBetweenEvictionRunsMillis"><value>${datasource.timeBetweenEvictionRunsMillis}</value></property>	
+		<!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+		<property name="minEvictableIdleTimeMillis"><value>${datasource.minEvictableIdleTimeMillis}</value></property>
+		<!-- 打开removeAbandoned功能 -->
+		<property name="removeAbandoned"><value>${datasource.removeAbandoned}</value></property>	
+		<!-- 打开removeAbandoned功能 -->
+		<property name="removeAbandonedTimeout"><value>${datasource.removeAbandonedTimeout}</value></property>		
+		<!-- 关闭abanded连接时输出错误日志 -->
+		<property name="logAbandoned"><value>${datasource.logAbandoned}</value></property>	
+		<property name="validationQuery"><value>${datasource.validationQuery}</value></property>
+		<!-- 监控数据库 -->
+		<property name="filters" value="stat,wall" />
+
+        <property name="proxyFilters">
+            <list>
+                <ref bean="log-filter"/>
+            </list>
+        </property>
+	</bean>
+
+	<!--MYBATIS设置开始 -->
+	
+	<bean id="annotationMappedStatementBuilder" class="com.tonto.framework.mybatis.core.AnnotationMappedStatementBuilder">
+		<property name="packageName" value="com.tonto.mastiff.model" />	
+	</bean>
+
+
+	<!-- 创建SqlSessionFactory，同时指定数据源 -->
+	<bean id="sessionFactory"
+		class="com.tonto.framework.mybatis.core.AutomationSqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:config/sqlmap-config.xml" />
+		<property name="mapperLocations" value="classpath:sqlmap/**/*.xml" />
+		<property name="mappedStatementBuilders">
+			<list>
+                <ref bean="annotationMappedStatementBuilder"/>
+            </list>
+		</property>
+	</bean>
+
+	<!-- Mapper接口所在包名，Spring会自动查找其下的Mapper -->
+	<!-- <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer"> <property 
+		name="basePackage" value="com.tonto.hms.dao" /> </bean> -->
+
+	<!-- 简单型模板 -->
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg index="0" ref="sessionFactory" />
+	</bean>
+
+	<!-- 复用型模板 -->
+	<bean id="reuseSqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg index="0" ref="sessionFactory" />
+		<constructor-arg index="1" type="org.apache.ibatis.session.ExecutorType" value="REUSE" />
+	</bean>
+
+	<!-- 批量处理型模板 -->
+	<bean id="batchSqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg index="0" ref="sessionFactory" />
+		<constructor-arg index="1" type="org.apache.ibatis.session.ExecutorType" value="BATCH" />
+	</bean>
+
+	<!-- MYBATIS设置结束 -->
+
+	<!-- 事务设置开始 -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<tx:annotation-driven transaction-manager="transactionManager" />
+
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="*"
+				rollback-for="com.tonto.framework.base.exception.RollbackException" />
+		</tx:attributes>
+	</tx:advice>
+	<!-- 事务设置结束 -->
+
+</beans>
